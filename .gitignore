@@ -1,0 +1,4 @@
+log-*
+tmp
+src/mixed_test
+src/table_test
