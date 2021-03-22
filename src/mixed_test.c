@@ -194,6 +194,7 @@ mixed_worker(const struct DBParams * const ps)
         const double elapsed = (usec - __ts.usec_start) / 1000000.0;
         const double qps = ((double)ps->nr_report) * 100.0 / udiff;
         printf("@@%14" PRIu64 " %12lf   %12lf   %12.2lf   %12.2lfMB\n", nr_100 * 100u, elapsed, udiff, qps, ((double)(cur_write_size)) / 1024 / 1024);
+        printf("QPS %.4lf\n", ((double)nr_100) * 100.0 / ((double)elapsed));
         __ts.usec_last = usec;
         db_stat_show(__ts.db, stdout);
         fflush(stdout);

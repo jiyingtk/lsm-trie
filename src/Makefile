@@ -2,7 +2,7 @@
 
 CC = clang
 
-#CFLAGS = -Wall -Wextra -g -ggdb -O0 -pthread -std=gnu11
+# CFLAGS = -Wall -Wextra -g -ggdb -O0 -pthread -std=gnu11
 CFLAGS = -Wall -Wextra -O0 -pthread -std=gnu11 -g  -ggdb
 
 LIBRARY = -lcrypto -lrt -lm
@@ -19,7 +19,7 @@ DEPS = $(SOURCES) $(HEADERS)
 BINARYS = table_test bloom_test rwlock_test generator_test mixed_test cmap_test cm_util io_util staged_read seqio_util
 
 .PHONY : ess all util clean check
-ess : table_test mixed_test
+ess : table_test mixed_test bloom_test
 util : io_util cm_util seqio_util
 
 all : $(BINARYS)
