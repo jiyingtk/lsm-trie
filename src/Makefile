@@ -3,7 +3,7 @@
 CC = clang
 
 #CFLAGS = -Wall -Wextra -g -ggdb -O0 -pthread -std=gnu11
-CFLAGS = -Wall -Wextra -O0 -pthread -std=gnu11 -g  -ggdb
+CFLAGS = -Wall -Wextra -O2 -pthread -std=gnu11 -g  -ggdb
 
 LIBRARY = -lcrypto -lrt -lm
 #LIBRARY = -lcrypto -lrt -lm -ljemalloc

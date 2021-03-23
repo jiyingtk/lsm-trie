@@ -37,7 +37,7 @@
 #define HSHIFT1 ((64 - HSHIFT0))
 
 // #define USE_BLOCK_FILTER
-#define NR_PARTITIONS 2
+#define NR_PARTITIONS 1
 #define get16bits(d) (*((const uint16_t *)(d)))
 
 uint32_t SuperFastHash(const uint64_t k) {

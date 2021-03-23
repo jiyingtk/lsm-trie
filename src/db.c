@@ -62,7 +62,7 @@ struct VirtualContainer {
 #define DB_COMPACTION_CAP (((uint64_t)(TABLE_ALIGN * 7.2)))
 // NR = 8
 #define DB_COMPACTION_NR         ((UINT64_C(8)))
-#define DB_COMPACTION_THREADS_NR ((UINT64_C(4)))
+#define DB_COMPACTION_THREADS_NR ((UINT64_C(8)))
 #define DB_FEED_UNIT ((TABLE_MAX_BARRELS))
 #define DB_FEED_NR   ((TABLE_MAX_BARRELS/DB_FEED_UNIT))
 #define DB_NR_LEVELS ((5))
