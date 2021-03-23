@@ -31,7 +31,7 @@
 #include "table.h"
 
 #define BARREL_CAP ((BARREL_ALIGN - sizeof(struct MetaIndex)))
-#define TABLE_VOLUME_PERCENT ((0.95))
+#define TABLE_VOLUME_PERCENT ((0.92))
 #define METAINDEX_PERCENT ((0.99))
 #define METAINDEX_MAX_NR ((UINT64_C(2048)))
 
@@ -457,19 +457,21 @@ __find_metaindex(const uint64_t nr_mi, const struct MetaIndex * const mis, const
 
 // generate bloom-filter for a NORMAL barrel
 // all bloom-filters should be generated before retaining
-  static struct BloomFilter *
+  static struct BloomFilterGroup *
 barrel_create_bf(struct Barrel * const barrel, struct Mempool * const mempool)
 {
   struct Item *items[BARREL_CAP] = {0};
+  uint64_t hvs[BARREL_CAP];
   const uint16_t item_count = barrel_to_array(barrel, items);
   assert(item_count < BARREL_CAP);
-  struct BloomFilter * const bf = bloom_create(item_count, mempool);
-  assert(bf);
 
   for (uint16_t i = 0; i < item_count; i++) {
     const uint64_t hv = item_hash_bf(items[i]);
-    bloom_update(bf, hv);
+    hvs[i] = hv;
   }
+
+  struct BloomFilterGroup * const bf = bloom_create_update(item_count, hvs, mempool);
+  assert(bf);
   return bf;
 }
 
@@ -542,7 +544,7 @@ table_free(struct Table * const table)
     huge_free(table->io_buffer, BARREL_ALIGN * TABLE_NR_IO);
   }
   if (table->bt) {
-    bloomtable_free(table->bt);
+    bloomgrouptable_free(table->bt);
   }
   free(table);
 }
@@ -605,11 +607,11 @@ table_insert_kv_safe(struct Table * const table, const struct KeyValue * const k
 table_build_bloomtable(struct Table * const table)
 {
   assert(table->bt == NULL);
-  struct BloomFilter *bfs[TABLE_NR_BARRELS];
+  struct BloomFilterGroup *bfs[TABLE_NR_BARRELS];
   for (uint64_t i = 0; i < TABLE_NR_BARRELS; i++) {
     bfs[i] = barrel_create_bf(&(table->barrels[i]), table->mempool);
   }
-  struct BloomTable * const bt = bloomtable_build(bfs, TABLE_NR_BARRELS);
+  struct BloomGroupTable * const bt = bloomgrouptable_build(bfs, TABLE_NR_BARRELS);
   assert(bt);
   table->bt = bt;
   return true;
@@ -843,7 +845,7 @@ table_dump_meta(struct Table *const table, const char * const metafn, const uint
   assert(nmo == mfh.nr_mi);
 
   // dump BloomTable
-  bloomtable_dump(table->bt, fo);
+  bloomgrouptable_dump(table->bt, fo);
   fclose(fo);
   return true;
 }
@@ -1031,7 +1033,7 @@ metatable_load(const char * const metafn, const int raw_fd, const bool load_bf, 
 
   // load bloom-filter
   if (load_bf) {
-    struct BloomTable * const bt = bloomtable_load(fi);
+    struct BloomTableGroup * const bt = bloomgrouptable_load(fi);
     assert(bt);
     mt->bt = bt;
   } else {
@@ -1083,7 +1085,7 @@ metatable_lookup(struct MetaTable * const mt, const uint16_t klen,
   const uint16_t bid = table_select_barrel(hash);
   if (mt->bt) {
     const uint64_t hv = __hash_bf(hash);
-    const bool exist = bloomtable_match(mt->bt, bid, hv);
+    const bool exist = bloomgrouptable_match(mt->bt, bid, hv);
     if (exist == false) {
       if (mt->stat) {
         __sync_add_and_fetch(&(mt->stat->nr_true_negative), 1);
@@ -1108,7 +1110,7 @@ metatable_lookup(struct MetaTable * const mt, const uint16_t klen,
 metatable_free(struct MetaTable * const mt)
 {
   if (mt->bt) {
-    bloomtable_free(mt->bt);
+    bloomgrouptable_free(mt->bt);
   }
   if (mt->mis) {
     free(mt->mis);

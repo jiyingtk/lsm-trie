@@ -42,7 +42,7 @@ struct Table {
   uint8_t *io_buffer;
   uint64_t nr_mi;
   struct MetaIndex * mis;
-  struct BloomTable *bt;
+  struct BloomGroupTable *bt;
   pthread_mutex_t ilocks[TABLE_ILOCKS_NR]; // used for parallel compaction feed
 };
 

@@ -38,7 +38,7 @@
 #define DB_CONTAINER_NR ((200))
 struct Container { // a container of tables
   uint64_t count;
-  struct BloomContainer *bc;
+  struct SegmentBloomContainer *bc;
   struct MetaTable *metatables[DB_CONTAINER_NR]; // count
 };
 
@@ -62,7 +62,7 @@ struct VirtualContainer {
 #define DB_COMPACTION_CAP (((uint64_t)(TABLE_ALIGN * 7.2)))
 // NR = 8
 #define DB_COMPACTION_NR         ((UINT64_C(8)))
-#define DB_COMPACTION_THREADS_NR ((UINT64_C(4)))
+#define DB_COMPACTION_THREADS_NR ((UINT64_C(8)))
 #define DB_FEED_UNIT ((TABLE_MAX_BARRELS))
 #define DB_FEED_NR   ((TABLE_MAX_BARRELS/DB_FEED_UNIT))
 #define DB_NR_LEVELS ((5))
@@ -140,8 +140,8 @@ struct Compaction {
   struct MetaTable *mts_new[8];
   uint64_t mtids_new[8];
   // BC
-  struct BloomContainer *mbcs_old[8];
-  struct BloomContainer *mbcs_new[8];
+  struct SegmentBloomContainer *mbcs_old[8];
+  struct SegmentBloomContainer *mbcs_new[8];
 };
 
 
@@ -178,14 +178,14 @@ db_destory_metatable(struct DB * const db, const uint64_t mtid)
   unlink(metafn);
 }
 
-  static struct BloomContainer *
+  static struct SegmentBloomContainer *
 db_load_bloomcontainer_meta(struct DB * const db, const uint64_t mtid)
 {
   char bcmeta_fn[2048];
   db_generate_meta_fn(db, mtid, bcmeta_fn);
   FILE * const fi = fopen(bcmeta_fn, "rb");
   assert(fi);
-  struct BloomContainer *bc = bloomcontainer_load_meta(fi, db->cm_bc->raw_fd);
+  struct SegmentBloomContainer *bc = segmentbloomcontainer_load_meta(fi, db->cm_bc->raw_fd);
   assert(bc);
   bc->mtid = mtid;
   fclose(fi);
@@ -193,13 +193,13 @@ db_load_bloomcontainer_meta(struct DB * const db, const uint64_t mtid)
 }
 
   static bool
-db_dump_bloomcontainer_meta(struct DB * const db, const uint64_t mtid, struct BloomContainer * const bc)
+db_dump_bloomcontainer_meta(struct DB * const db, const uint64_t mtid, struct SegmentBloomContainer * const bc)
 {
   char bcmeta_fn[2048];
   db_generate_meta_fn(db, mtid, bcmeta_fn);
   FILE * const fo = fopen(bcmeta_fn, "wb");
   assert(fo);
-  const bool r = bloomcontainer_dump_meta(bc, fo);
+  const bool r = segmentbloomcontainer_dump_meta(bc, fo);
   fclose(fo);
   return r;
 }
@@ -252,7 +252,7 @@ vc_create(const uint64_t start_bit)
 
 // must used under lock aquired on vc
   static bool
-vc_insert_internal(struct VirtualContainer *const vc, struct MetaTable *const mt, struct BloomContainer *const bc)
+vc_insert_internal(struct VirtualContainer *const vc, struct MetaTable *const mt, struct SegmentBloomContainer *const bc)
 {
   if (vc->cc.count < DB_CONTAINER_NR) {
     const uint64_t id = vc->cc.count;
@@ -274,7 +274,7 @@ vc_recursive_free(struct VirtualContainer * const vc)
   for (uint64_t i = 0; i < DB_CONTAINER_NR; i++) {
     if (vc->cc.metatables[i]) { metatable_free(vc->cc.metatables[i]); }
   }
-  if (vc->cc.bc) { bloomcontainer_free(vc->cc.bc); }
+  if (vc->cc.bc) { segmentbloomcontainer_free(vc->cc.bc); }
 
   for (uint64_t i = 0; i < 8; i++) {
     if (vc->sub_vc[i]) { vc_recursive_free(vc->sub_vc[i]); }
@@ -401,7 +401,7 @@ recursive_parse(FILE * const in, const uint64_t start_bit, struct DB * const db)
     // load bloomcontainer
     assert(buf[2] != '\0');
     const uint64_t mtid_bc = strtoull(buf+2, NULL, 16);
-    struct BloomContainer * const bc = db_load_bloomcontainer_meta(db, mtid_bc);
+    struct SegmentBloomContainer * const bc = db_load_bloomcontainer_meta(db, mtid_bc);
     vc->cc.bc = bc;
   }
   for (uint64_t i = 0; i < 8; i++) {
@@ -727,32 +727,30 @@ thread_compaction_dump(void * const p)
   pthread_exit(NULL);
 }
 
-  static struct BloomContainer *
-compaction_update_bc(struct DB * const db, struct BloomContainer * const old_bc, struct BloomTable * const bloomtable)
+  static struct SegmentBloomContainer *
+compaction_update_bc(struct DB * const db, struct SegmentBloomContainer * const old_bc, struct BloomGroupTable * const bloomtable)
 {
   const double sec0 = debug_time_sec();
     
   const uint64_t mtid_bc = db_aquire_mtid(db);
-  struct BloomContainer * new_bc;
+  struct SegmentBloomContainer * new_bc;
+  struct BloomGroupTable * tmp_bts[32];
+  tmp_bts[0] = bloomtable;
   if (old_bc == NULL) {
-    const uint64_t off_bc = db_cmap_safe_alloc(db, db->cm_bc);
-    assert(off_bc < db->cm_bc->total_cap);
-    const int raw_fd = db->cm_bc->raw_fd;
-
-    new_bc = bloomcontainer_build(bloomtable, raw_fd, off_bc, &(db->stat));
+    new_bc = segmentbloomcontainer_build(db->cm_bc, NULL, tmp_bts, 1, &(db->stat));
   }
   else
-    new_bc = bloomcontainer_update(db->cm_bc, old_bc, bloomtable, &(db->stat));
+    new_bc = segmentbloomcontainer_update(db->cm_bc, old_bc, tmp_bts, 1, &(db->stat));
 
   assert(new_bc);
   new_bc->mtid = mtid_bc;
-  const uint64_t count = new_bc->nr_bf_per_box;
+  const uint64_t count = new_bc->nr_bf;
   assert(count > 0);
 
   const bool r = db_dump_bloomcontainer_meta(db, mtid_bc, new_bc);
   assert(r);
   db_log_diff(db, sec0, "BC   *%1" PRIu64 " [%8" PRIx64 " #%08" PRIx64 "] {%4" PRIu32 "}",
-      count, mtid_bc, new_bc->off_raw[0]/TABLE_ALIGN, new_bc->nr_index);
+      count, mtid_bc, new_bc->off_raw[new_bc->cur_segment][0]/TABLE_ALIGN, new_bc->nr_index[0]);
   return new_bc;
 }
 
@@ -762,7 +760,7 @@ thread_compaction_bc(void * const p)
   struct Compaction * const comp = (typeof(comp))p;
   const uint64_t i = __sync_fetch_and_add(&(comp->bc_token), 1);
   assert(i < 8);
-  struct BloomContainer * const new_bc = compaction_update_bc(comp->db, comp->mbcs_old[i], comp->tables[i]->bt);
+  struct SegmentBloomContainer * const new_bc = compaction_update_bc(comp->db, comp->mbcs_old[i], comp->tables[i]->bt);
   comp->mbcs_new[i] = new_bc;
   pthread_exit(NULL);
 }
@@ -830,9 +828,12 @@ compaction_free_old(struct Compaction * const comp)
   // free n+1
   for (uint64_t i = 0; i < 8; i++) {
     if (comp->mbcs_old[i]) {
-      for (uint64_t j = 0; j < comp->mbcs_old[i]->container_unit_count; j++)
-        containermap_release(comp->db->cm_bc, comp->mbcs_old[i]->off_raw[j]);
-      bloomcontainer_free(comp->mbcs_old[i]);
+      for (uint32_t cur_segment = comp->mbcs_old[i]->need_discard_segment; cur_segment <= comp->mbcs_old[i]->cur_segment; cur_segment++) {
+        for (int j = 0; j < comp->mbcs_old[i]->container_unit_count[cur_segment]; j++) {
+          containermap_release(comp->db->cm_bc, comp->mbcs_old[i]->off_raw[cur_segment][j]);
+        }
+      }
+      segmentbloomcontainer_free(comp->mbcs_old[i]);
     }
     if (comp->gen_bc == false) { // keep bloomtable
       comp->tables[i]->bt = NULL;
@@ -1080,7 +1081,7 @@ recursive_lookup(struct Stat * const stat, struct VirtualContainer * const vc, c
     assert(index < UINT64_C(0x100000000));
     const uint64_t *phv = ((const uint64_t*)(&(hash[12])));
     const uint64_t hv = *phv;
-    uint32_t read_size = bloomcontainer_match(vc->cc.bc, (uint32_t)index, hv, bitmap);
+    uint32_t read_size = segmentbloomcontainer_match(vc->cc.bc, (uint32_t)index, hv, bitmap);
     stat_inc_n(&(stat->nr_read_bc_count), read_size);
     stat_inc(&(stat->nr_read_count));
 

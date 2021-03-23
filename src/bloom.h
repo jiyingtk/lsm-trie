@@ -13,7 +13,7 @@
 #include "stat.h"
 #include "cmap.h"
 
-#define NR_PARTITIONS 4
+#define NR_PARTITIONS 1
 
 struct BloomFilter {
   uint32_t bytes; // bytes = bits >> 3 (length of filter)
@@ -60,7 +60,7 @@ struct BloomContainer {
 
 #define NR_SEGMENTS 4
 #define NR_SEGMENTS_MAX ((NR_SEGMENTS * 4))
-#define NR_BFS_PER_SEGMENT (10)
+#define NR_BFS_PER_SEGMENT (32)
 
 struct SegmentBloomContainer {
   int raw_fd;
