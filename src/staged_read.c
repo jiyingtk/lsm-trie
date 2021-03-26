@@ -121,6 +121,7 @@ staged_worker(const struct DBParams * const ps)
 {
   uint64_t keys[100];
   const uint64_t klen = sizeof(klen);
+  uint64_t cur_write_size = 0;
 
   struct KeyValue kvs[100] __attribute__((aligned(8)));
   for (uint64_t i = 0; i < 100u; i++) {
@@ -137,12 +138,15 @@ staged_worker(const struct DBParams * const ps)
         const uint64_t rkey = __ts.gc->next(__ts.gc);
         keys[i] = rkey;
         (void)keys[i];
+        cur_write_size += kvs[i].klen + kvs[i].vlen;
       }
       const bool rmi = db_multi_insert(__ts.db, 100, kvs);
       assert(rmi);
     }
     // wait for compaction
     do { sleep(1); } while (db_doing_compaction(__ts.db));
+
+    fprintf(stdout, "EUNI-Write_Size %.4lfMB, Write_Item_Num %" PRIu64 "\n", ((double)(cur_write_size)) / 1024 / 1024, ps->nr_cycle * x * 100);
 
     // read
     const uint64_t max = __ts.gc->gen.counter.counter;
