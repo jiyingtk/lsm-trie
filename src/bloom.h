@@ -13,7 +13,7 @@
 #include "stat.h"
 #include "cmap.h"
 
-#define NR_PARTITIONS 1
+#define NR_PARTITIONS 4
 
 struct BloomFilter {
   uint32_t bytes; // bytes = bits >> 3 (length of filter)

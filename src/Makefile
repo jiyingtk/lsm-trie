@@ -19,7 +19,7 @@ DEPS = $(SOURCES) $(HEADERS)
 BINARYS = table_test bloom_test rwlock_test generator_test mixed_test cmap_test cm_util io_util staged_read seqio_util
 
 .PHONY : ess all util clean check
-ess : table_test mixed_test bloom_test
+ess : table_test mixed_test bloom_test staged_read
 util : io_util cm_util seqio_util
 
 all : $(BINARYS)

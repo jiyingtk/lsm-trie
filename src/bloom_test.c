@@ -569,7 +569,7 @@ main(int argc, char **argv)
 
   // uncached_probe_test();
   // false_positive_test();
-  // pbf_false_positive_test();
+  pbf_false_positive_test();
   // multi_level_false_positive_test();
   // containertest();
   containerperf();
