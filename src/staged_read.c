@@ -151,8 +151,6 @@ staged_worker(const struct DBParams * const ps)
     // read
     const uint64_t max = __ts.gc->gen.counter.counter;
     // uniform existed
-    __ts.gr = generator_new_uniform(0, UINT64_MAX>>2);
-    do_read("WARM", ps->nr_readers, 10);
     __ts.gr = generator_new_uniform(0, max - (ps->nr_cycle * 50));
     do_read("EUNI", ps->nr_readers, 30);
     // uniform nonexisted
