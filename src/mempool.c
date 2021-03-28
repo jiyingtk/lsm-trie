@@ -22,7 +22,7 @@
 
 #include "mempool.h"
 
-#define MEMPOOL_UNIT (1024 * 512)
+#define MEMPOOL_UNIT (1024 * 1024)
 
 struct Mempool {
   bool using_mmap;
