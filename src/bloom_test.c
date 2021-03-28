@@ -64,14 +64,14 @@ false_positive_test(void)
   // random seed
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  srandom(tv.tv_usec);
+  srandom(0);
   uint64_t probes = 0;
   uint64_t fps = 0;
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 3000; i++) {
     struct Mempool * const p = mempool_new(4096*4096);
     const uint64_t nr_keys = 64;
-    const uint64_t nr_probes = nr_keys * 65536;
+    const uint64_t nr_probes = 30000;
     uint64_t * const keys = (typeof(keys))malloc(sizeof(keys[0]) * nr_keys);
 
     struct BloomFilter *bf = bloom_create(nr_keys, p);
@@ -106,19 +106,20 @@ false_positive_test(void)
       }
     }
     const double fprate = ((double)fp) / ((double)nr_probes);
-    printf("%" PRIu64 " out of %" PRIu64 ": %lf, ", fp, nr_probes, fprate);
-    printf(" 8 %5.2lf  ", fprate *  8.0 * 100.0);
-    printf("32 %5.2lf  ", fprate * 32.0 * 100.0);
-    printf("40 %5.2lf  ", fprate * 40.0 * 100.0);
-    printf("48 %5.2lf  ", fprate * 48.0 * 100.0);
-    printf("56 %5.2lf  ", fprate * 56.0 * 100.0);
-    printf("64 %5.2lf\n", fprate * 64.0 * 100.0);
+    // printf("%lf\n", fprate);
+    // printf("%" PRIu64 " out of %" PRIu64 ": %lf, ", fp, nr_probes, fprate);
+    // printf(" 8 %5.2lf  ", fprate *  8.0 * 100.0);
+    // printf("32 %5.2lf  ", fprate * 32.0 * 100.0);
+    // printf("40 %5.2lf  ", fprate * 40.0 * 100.0);
+    // printf("48 %5.2lf  ", fprate * 48.0 * 100.0);
+    // printf("56 %5.2lf  ", fprate * 56.0 * 100.0);
+    // printf("64 %5.2lf\n", fprate * 64.0 * 100.0);
     mempool_free(p);
     fps += fp;
     probes += nr_probes;
   }
   const double fprateall = ((double)fps) / ((double)probes);
-  printf("%" PRIu64 " out of %" PRIu64 ": %lf, ", fps, probes, fprateall);
+  printf("total: %" PRIu64 " out of %" PRIu64 ": %lf, ", fps, probes, fprateall);
   printf(" 8: %5.2lf  ", fprateall *  8.0 * 100.0);
   printf("32: %5.2lf  ", fprateall * 32.0 * 100.0);
   printf("40: %5.2lf  ", fprateall * 40.0 * 100.0);
@@ -133,14 +134,14 @@ pbf_false_positive_test(void)
   // random seed
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  srandom(tv.tv_usec);
+  srandom(0);
   uint64_t probes = 0;
   uint64_t fps = 0;
   printf("Test pbf false positive\n");
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 3000; i++) {
     struct Mempool * const p = mempool_new(4096*4096);
     const uint64_t nr_keys = 64;
-    const uint64_t nr_probes = nr_keys * 65536;
+    const uint64_t nr_probes = 30000;
     uint64_t * const keys = (typeof(keys))malloc(sizeof(keys[0]) * nr_keys);
 
     // put nr_keys keys
@@ -174,19 +175,19 @@ pbf_false_positive_test(void)
       }
     }
     const double fprate = ((double)fp) / ((double)nr_probes);
-    printf("%" PRIu64 " out of %" PRIu64 ": %lf, ", fp, nr_probes, fprate);
-    printf(" 8 %5.2lf  ", fprate *  8.0 * 100.0);
-    printf("32 %5.2lf  ", fprate * 32.0 * 100.0);
-    printf("40 %5.2lf  ", fprate * 40.0 * 100.0);
-    printf("48 %5.2lf  ", fprate * 48.0 * 100.0);
-    printf("56 %5.2lf  ", fprate * 56.0 * 100.0);
-    printf("64 %5.2lf\n", fprate * 64.0 * 100.0);
+    // printf("%" PRIu64 " out of %" PRIu64 ": %lf, ", fp, nr_probes, fprate);
+    // printf(" 8 %5.2lf  ", fprate *  8.0 * 100.0);
+    // printf("32 %5.2lf  ", fprate * 32.0 * 100.0);
+    // printf("40 %5.2lf  ", fprate * 40.0 * 100.0);
+    // printf("48 %5.2lf  ", fprate * 48.0 * 100.0);
+    // printf("56 %5.2lf  ", fprate * 56.0 * 100.0);
+    // printf("64 %5.2lf\n", fprate * 64.0 * 100.0);
     mempool_free(p);
     fps += fp;
     probes += nr_probes;
   }
   const double fprateall = ((double)fps) / ((double)probes);
-  printf("%" PRIu64 " out of %" PRIu64 ": %lf, ", fps, probes, fprateall);
+  printf("pbf: %" PRIu64 " out of %" PRIu64 ": %lf, ", fps, probes, fprateall);
   printf(" 8: %5.2lf  ", fprateall *  8.0 * 100.0);
   printf("32: %5.2lf  ", fprateall * 32.0 * 100.0);
   printf("40: %5.2lf  ", fprateall * 40.0 * 100.0);
@@ -247,6 +248,63 @@ multi_level_false_positive_test(void)
     }
   }
   printf("multi-level non-exist keys fp: %" PRIu64 " levels, %" PRIu64 " probes, %" PRIu64 " f-p, %.3lf%%\n",
+      nr_levels, level * nr_nonprobe, fp, ((double)fp) * 100.0 /((double)nr_nonprobe));
+
+  mempool_free(p);
+}
+
+  void
+pbf_multi_level_false_positive_test(void)
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  srandom(tv.tv_usec);
+
+  struct Mempool *p = mempool_new(256*1024*1024);
+  const uint64_t nr_keys = 64;
+  const uint64_t nr_inserted_keys = 64;
+
+  const uint64_t nr_levels = 200;
+  const uint64_t nr_all_keys = nr_keys * nr_levels;
+
+  uint64_t * const keys = (typeof(keys))malloc(sizeof(keys[0]) * nr_all_keys);
+  struct BloomFilterGroup *bfs[nr_levels] = {NULL};
+
+  for (uint64_t l = 0; l < nr_levels; l++) {
+    // put nr_keys keys and remember in keys[]
+    for (uint64_t k = 0; k < nr_inserted_keys; k++) {
+      const uint64_t h = random_uint64();
+      keys[l * nr_keys + k] = h;
+    }
+    bfs[l] = bloom_create_update(nr_keys, keys + (l * nr_keys), p);
+
+    // true-positive
+    for (uint64_t k = 0; k < nr_inserted_keys; k++) {
+      assert(bloom_group_match(bfs[l], keys[l * nr_keys + k]));
+    }
+  }
+
+  // check keys in the last level
+  uint64_t fp = 0;
+  const uint64_t level = nr_levels - 1;
+  for (uint64_t l = 0; l < level; l++) {
+    for (uint64_t k = 0; k < nr_inserted_keys; k++) {
+      const bool m = bloom_group_match(bfs[l], keys[level * nr_keys + k]);
+      if (m) fp++;
+    }
+  }
+  printf("pbf: multi-level exist keys fp: %" PRIu64 " levels, %" PRIu64 " keys/level, %" PRIu64 " probes, %" PRIu64 " f-p, %.3lf%%\n",
+      nr_levels, nr_keys, level * nr_keys, fp, ((double)fp) * 100.0 /((double)nr_keys));
+  fp = 0;
+  const uint64_t nr_nonprobe = 10000;
+  for (uint64_t l = 0; l < level; l++) {
+    for (uint64_t k = 0; k < nr_nonprobe; k++) {
+      const uint64_t h = random_uint64();
+      const bool m = bloom_group_match(bfs[l], h);
+      if (m) fp++;
+    }
+  }
+  printf("pbf: multi-level non-exist keys fp: %" PRIu64 " levels, %" PRIu64 " probes, %" PRIu64 " f-p, %.3lf%%\n",
       nr_levels, level * nr_nonprobe, fp, ((double)fp) * 100.0 /((double)nr_nonprobe));
 
   mempool_free(p);
@@ -392,7 +450,7 @@ containertest(void)
 containerperf(void)
 {
   const uint64_t xcap = TABLE_MAX_BARRELS; // # of barrels
-  const uint64_t max_level = 200;
+  const uint64_t max_level = 128;
   const uint64_t nr_keys = 64;
   struct Mempool *mp = mempool_new(xcap * 4096 * max_level);
   struct BloomFilter *bfs[max_level][xcap];
@@ -470,7 +528,7 @@ containerperf(void)
 segmentcontainerperf(void)
 {
   const uint64_t xcap = TABLE_MAX_BARRELS; // # of barrels
-  const uint64_t max_level = 200;
+  const uint64_t max_level = 512;
   const uint64_t nr_keys = 64;
   struct Mempool *mp = mempool_new(xcap * 4096 * max_level);
   struct BloomFilterGroup *bfs[max_level][xcap];
@@ -569,8 +627,9 @@ main(int argc, char **argv)
 
   // uncached_probe_test();
   // false_positive_test();
-  pbf_false_positive_test();
+  // pbf_false_positive_test();
   // multi_level_false_positive_test();
+  // pbf_multi_level_false_positive_test();
   // containertest();
   containerperf();
   segmentcontainerperf();
