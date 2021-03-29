@@ -586,7 +586,7 @@ segmentcontainerperf(void)
     nr_index += bcs->nr_index[i];
   }
 
-  printf("segmentbloomcluster: nr_write_bc %lu, bc_size %lu, war %lf\n", stat.nr_write_bc, nr_index, stat.nr_write_bc * 1.0 / nr_index);
+  printf("segmentbloomcluster: nr_write_bc %lu, bc_size %lu, war %lf, the-war %lf\n", stat.nr_write_bc, nr_index, stat.nr_write_bc * 1.0 / nr_index, stat.nr_write_bc * 1.0 / (max_level * xcap * nr_keys * 2.0 / 4096.0));
 
   uint64_t match=0;
   uint64_t nomatch =0;
